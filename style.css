@@ -24,7 +24,7 @@ body {
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+header { margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 h1 { margin: 0; color: var(--accent); font-size: 1.7rem; letter-spacing: .5px; }
 .menu button { font-size: .85rem; padding: 6px 10px; }
 button {
@@ -72,3 +72,79 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 #log .good { color: var(--xp); }
 #log .bad { color: var(--hp); }
 #log .gold { color: var(--accent); }
+
+/* ---------- Tvorba postavy ---------- */
+.creation { display: grid; gap: 18px; }
+.creation section { display: grid; gap: 8px; min-width: 0; }
+.creation h2 {
+  margin: 0;
+  font-size: .8rem;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--accent);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+.creation .hint { margin: 0; color: var(--muted); font-size: .9rem; }
+.text-input {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  width: 100%;
+  max-width: 320px;
+}
+.text-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt { padding: 8px 14px; }
+.opt[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--bg);
+  background: var(--accent);
+}
+.opt[aria-pressed="true"]:hover { color: var(--bg); }
+.points { color: var(--hp); text-transform: none; letter-spacing: 0; font-size: .9rem; }
+.points.done { color: var(--xp); }
+.attrs { display: grid; gap: 6px; }
+.attr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.attr-info { display: grid; min-width: 0; }
+.attr-info .hint { font-size: .8rem; }
+.attr-ctrl { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.step {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  text-align: center;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.attr-val {
+  min-width: 2.4em;
+  text-align: center;
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+.attr-val small { color: var(--xp); font-size: .7rem; margin-left: 2px; }
+.preview {
+  padding: 12px 14px;
+  border: 1px dashed var(--accent);
+  border-radius: 8px;
+}
+.preview p { margin: 0; }
+.preview-stats { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: .9rem; }
+.preview-stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+button.primary { border-color: var(--accent); color: var(--accent); font-weight: bold; }

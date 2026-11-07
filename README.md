@@ -8,7 +8,7 @@ Otvor súbor `index.html` v prehliadači. Nič netreba inštalovať.
 
 ## Čo hra obsahuje
 
-- **3 triedy postáv:** Bojovník, Mág, Zlodej. Každá má vlastnú schopnosť.
+- **Tvorba postavy:** meno, pohlavie (texty sa prispôsobia), povolanie (Bojovník, Mág, Zlodej), pôvod s bonusom a rozdelenie bodov do vlastností (Sila, Obratnosť, Inteligencia, Odolnosť).
 - **Ťahové súboje:** útok, schopnosť (stojí manu), obrana (obnoví trochu many), elixíry a útek.
 - **Postup postavy:** skúsenosti, úrovne a zlepšovanie vlastností.
 - **Obchod** so zbraňami, zbrojou a elixírmi. **Hostinec** obnoví zdravie aj manu.

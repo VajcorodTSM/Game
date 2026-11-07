@@ -10,22 +10,60 @@ const SAVE_KEY = "tien-nad-horkou-save";
 
 const CLASSES = {
   bojovnik: {
-    name: "Bojovník",
+    name: "Bojovník", nameF: "Bojovníčka",
     desc: "Veľa zdravia a silné údery. Schopnosť: Drvivý úder (dvojnásobné poškodenie).",
     hp: 40, mp: 10, atk: 7, def: 4,
     skill: { name: "Drvivý úder", cost: 4 },
   },
   mag: {
-    name: "Mág",
-    desc: "Krehký, ale mocný. Schopnosť: Ohnivá guľa (ignoruje obranu, veľké poškodenie).",
+    name: "Mág", nameF: "Mágička",
+    desc: "Málo zdravia, ale ničivé kúzla. Schopnosť: Ohnivá guľa (ignoruje obranu, veľké poškodenie).",
     hp: 26, mp: 30, atk: 4, def: 2,
     skill: { name: "Ohnivá guľa", cost: 6 },
   },
   zlodej: {
-    name: "Zlodej",
-    desc: "Rýchly a šikovný, častejšie kritické zásahy. Schopnosť: Úder z tieňa (istý kritický zásah).",
+    name: "Zlodej", nameF: "Zlodejka",
+    desc: "Rýchlosť a šikovnosť, častejšie kritické zásahy. Schopnosť: Úder z tieňa (istý kritický zásah).",
     hp: 32, mp: 16, atk: 6, def: 3,
     skill: { name: "Úder z tieňa", cost: 5 },
+  },
+};
+
+const ATTRS = {
+  sila: { name: "Sila", desc: "+1 útok za každý bod" },
+  obratnost: { name: "Obratnosť", desc: "+3 % šanca na kritický zásah, ľahší útek" },
+  inteligencia: { name: "Inteligencia", desc: "+4 mana a silnejšia schopnosť za každý bod" },
+  odolnost: { name: "Odolnosť", desc: "+4 zdravie za každý bod, +1 obrana za každé 2 body" },
+};
+const ATTR_BASE = 1;
+const ATTR_MAX = 5;
+const ATTR_POINTS = 6;
+
+const ORIGINS = {
+  kovac: {
+    name: "Kováčska rodina",
+    desc: "Vyrastal si pri vyhni. +1 Sila a začínaš v koženej zbroji.",
+    descF: "Vyrastala si pri vyhni. +1 Sila a začínaš v koženej zbroji.",
+    attr: "sila",
+    apply: (s) => { s.armor = "kozena"; },
+  },
+  lovec: {
+    name: "Lovecký rod z hôr",
+    desc: "Poznáš stopy aj byliny. +1 Obratnosť a 2 liečivé elixíry navyše.",
+    attr: "obratnost",
+    apply: (s) => { s.inv.liek += 2; },
+  },
+  klastor: {
+    name: "Kláštorný učeň",
+    desc: "Roky si študoval staré knihy. +1 Inteligencia a 2 modré elixíry.",
+    descF: "Roky si študovala staré knihy. +1 Inteligencia a 2 modré elixíry.",
+    attr: "inteligencia",
+    apply: (s) => { s.inv.mana += 2; },
+  },
+  kupec: {
+    name: "Kupecká rodina",
+    desc: "Peniaze otvárajú dvere. Začínaš so 60 zlatými namiesto 20.",
+    apply: (s) => { s.gold += 40; },
   },
 };
 
@@ -79,6 +117,9 @@ function newState(cls) {
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const xpNeeded = (lvl) => 20 + (lvl - 1) * 25;
+const g = (m, f) => (state && state.gender === "f" ? f : m);
+const attr = (k) => (state && state.attrs ? state.attrs[k] : ATTR_BASE);
+const className = (s) => (s.gender === "f" ? CLASSES[s.cls].nameF : CLASSES[s.cls].name);
 
 function totalAtk() {
   return state.atk + (state.weapon ? ITEMS[state.weapon].atk : 0);
@@ -107,7 +148,7 @@ function renderStats() {
   const pct = (a, b) => Math.max(0, Math.min(100, (a / b) * 100));
   el.innerHTML = `
     <div class="stat-row">
-      <div><strong>${escapeHtml(s.name)}</strong> <span class="muted">${CLASSES[s.cls].name}, úroveň ${s.level}</span></div>
+      <div><strong>${escapeHtml(s.name)}</strong> <span class="muted">${className(s)}${s.origin ? ` (${ORIGINS[s.origin].name})` : ""}, úroveň ${s.level}</span></div>
       <div>Zlato: <span style="color:var(--accent)">${s.gold}</span></div>
       <div>Útok ${totalAtk()} · Obrana ${totalDef()}</div>
     </div>
@@ -117,6 +158,9 @@ function renderStats() {
       <div>Skúsenosti ${s.xp}/${xpNeeded(s.level)}<div class="bar xp"><span style="width:${pct(s.xp, xpNeeded(s.level))}%"></span></div></div>
     </div>
     <div class="muted" style="margin-top:6px">
+      ${Object.entries(ATTRS).map(([k, a]) => `${a.name} ${attr(k)}`).join(" · ")}
+    </div>
+    <div class="muted">
       Výbava: ${s.weapon ? ITEMS[s.weapon].name : "bez zbrane"}, ${s.armor ? ITEMS[s.armor].name : "bez zbroje"} ·
       Elixíry: ${s.inv.liek || 0}× liečivý, ${s.inv.mana || 0}× modrý
     </div>`;
@@ -146,13 +190,14 @@ function go(scene) {
 
 function startScreen() {
   state = null;
+  draft = null;
   combat = null;
   $("log").innerHTML = "";
   const hasSave = !!safeGet();
   show(
     [
       "Dedinku Hôrka už tri mesiace zahaľuje zvláštny tieň. Úroda hnije, studne sú kalné a v noci z lesa počuť šepot.",
-      "Starosta rozposlal posla do širokého okolia: kto zbaví Hôrku kliatby, toho odmení. Ty si jediný, kto prišiel.",
+      "Starosta rozposlal posla do širokého okolia: kto zbaví Hôrku kliatby, toho odmení. Ozval sa jediný človek – ty.",
     ],
     [
       { label: "Začať nové dobrodružstvo", action: chooseName },
@@ -161,39 +206,182 @@ function startScreen() {
   );
 }
 
-function chooseName() {
-  $("story").innerHTML = `<p>Ako sa voláš, pocestný?</p>
-    <p><input id="name-input" maxlength="20" placeholder="Tvoje meno"
-      style="font:inherit;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--text);width:100%;max-width:300px"></p>`;
-  const box = $("choices");
-  box.innerHTML = "";
-  const b = document.createElement("button");
-  b.type = "button";
-  b.textContent = "Pokračovať";
-  const submit = () => {
-    const name = ($("name-input").value || "").trim() || "Pocestný";
-    chooseClass(name);
+// ---------- Tvorba postavy ----------
+
+let draft = null;
+
+function newDraft() {
+  return {
+    name: "",
+    gender: "m",
+    cls: "bojovnik",
+    origin: "kovac",
+    attrs: Object.fromEntries(Object.keys(ATTRS).map((k) => [k, ATTR_BASE])),
   };
-  b.addEventListener("click", submit);
-  box.appendChild(b);
-  const input = $("name-input");
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
-  input.focus();
 }
 
-function chooseClass(name) {
+function pointsLeft(d) {
+  const used = Object.values(d.attrs).reduce((a, v) => a + (v - ATTR_BASE), 0);
+  return ATTR_POINTS - used;
+}
+
+function buildCharacter(d) {
+  const s = newState(d.cls);
+  s.name = d.name.trim() || (d.gender === "f" ? "Pocestná" : "Pocestný");
+  s.gender = d.gender;
+  s.origin = d.origin;
+  const o = ORIGINS[d.origin];
+  const a = { ...d.attrs };
+  if (o.attr) a[o.attr] += 1;
+  s.attrs = a;
+  s.atk += a.sila - ATTR_BASE;
+  s.maxHp += (a.odolnost - ATTR_BASE) * 4;
+  s.def += Math.floor((a.odolnost - ATTR_BASE) / 2);
+  s.maxMp += (a.inteligencia - ATTR_BASE) * 4;
+  s.hp = s.maxHp;
+  s.mp = s.maxMp;
+  o.apply(s);
+  return s;
+}
+
+function optionGroup(field, options) {
+  return `<div class="opts" role="group">${options.map(([val, label]) =>
+    `<button type="button" class="opt" data-field="${field}" data-val="${val}" aria-pressed="${draft[field] === val}">${label}</button>`
+  ).join("")}</div>`;
+}
+
+function chooseName() {
+  draft = newDraft();
+  renderCreation();
+  const input = $("name-input");
+  if (input) input.focus();
+}
+
+function renderCreation() {
+  const d = draft;
+  const f = d.gender === "f";
+  const left = pointsLeft(d);
+  const preview = buildCharacter(d);
+  const c = CLASSES[d.cls];
+  const o = ORIGINS[d.origin];
+  const originDesc = f && o.descF ? o.descF : o.desc;
+
+  $("story").innerHTML = `
+    <div class="creation">
+      <section>
+        <h2>Meno</h2>
+        <input id="name-input" class="text-input" maxlength="20" placeholder="${f ? "Pocestná" : "Pocestný"}" value="${escapeHtml(d.name)}" autocomplete="off">
+      </section>
+
+      <section>
+        <h2>Pohlavie</h2>
+        ${optionGroup("gender", [["m", "Muž"], ["f", "Žena"]])}
+      </section>
+
+      <section>
+        <h2>Povolanie</h2>
+        ${optionGroup("cls", Object.entries(CLASSES).map(([k, x]) => [k, f ? x.nameF : x.name]))}
+        <p class="hint">${c.desc}</p>
+      </section>
+
+      <section>
+        <h2>Pôvod</h2>
+        ${optionGroup("origin", Object.entries(ORIGINS).map(([k, x]) => [k, x.name]))}
+        <p class="hint">${originDesc}</p>
+      </section>
+
+      <section>
+        <h2>Vlastnosti <span class="points ${left === 0 ? "done" : ""}">Zostáva bodov: ${left}</span></h2>
+        <div class="attrs">
+          ${Object.entries(ATTRS).map(([k, a]) => {
+            const bonus = o.attr === k ? 1 : 0;
+            return `<div class="attr-row">
+              <div class="attr-info"><strong>${a.name}</strong><span class="hint">${a.desc}</span></div>
+              <div class="attr-ctrl">
+                <button type="button" class="step" data-attr="${k}" data-delta="-1" aria-label="Znížiť ${a.name}" ${d.attrs[k] <= ATTR_BASE ? "disabled" : ""}>−</button>
+                <span class="attr-val">${d.attrs[k] + bonus}${bonus ? '<small>+1</small>' : ""}</span>
+                <button type="button" class="step" data-attr="${k}" data-delta="1" aria-label="Zvýšiť ${a.name}" ${left <= 0 || d.attrs[k] >= ATTR_MAX ? "disabled" : ""}>+</button>
+              </div>
+            </div>`;
+          }).join("")}
+        </div>
+      </section>
+
+      <section class="preview">
+        <h2>Tvoja postava</h2>
+        <p><strong>${escapeHtml(preview.name)}</strong>, ${className(preview).toLowerCase()} – ${o.name.toLowerCase()}</p>
+        <div class="preview-stats">
+          <span>Zdravie <b>${preview.maxHp}</b></span>
+          <span>Mana <b>${preview.maxMp}</b></span>
+          <span>Útok <b>${preview.atk + (preview.weapon ? ITEMS[preview.weapon].atk : 0)}</b></span>
+          <span>Obrana <b>${preview.def + (preview.armor ? ITEMS[preview.armor].def : 0)}</b></span>
+          <span>Zlato <b>${preview.gold}</b></span>
+        </div>
+      </section>
+    </div>`;
+
+  const box = $("choices");
+  box.innerHTML = "";
+  const startBtn = document.createElement("button");
+  startBtn.type = "button";
+  startBtn.className = "primary";
+  startBtn.textContent = left > 0 ? `Rozdeľ ešte ${left} ${left === 1 ? "bod" : left < 5 ? "body" : "bodov"}` : "Začať dobrodružstvo";
+  startBtn.disabled = left > 0;
+  startBtn.addEventListener("click", finishCreation);
+  box.appendChild(startBtn);
+  const back = document.createElement("button");
+  back.type = "button";
+  back.textContent = "Späť";
+  back.addEventListener("click", startScreen);
+  box.appendChild(back);
+
+  const input = $("name-input");
+  input.addEventListener("input", () => {
+    draft.name = input.value;
+    const p = document.querySelector(".preview p strong");
+    if (p) p.textContent = draft.name.trim() || (draft.gender === "f" ? "Pocestná" : "Pocestný");
+  });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") input.blur(); });
+
+  $("story").querySelectorAll(".opt").forEach((b) => b.addEventListener("click", () => {
+    draft[b.dataset.field] = b.dataset.val;
+    rerenderCreation(b);
+  }));
+  $("story").querySelectorAll(".step").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.attr;
+    const delta = Number(b.dataset.delta);
+    const next = draft.attrs[k] + delta;
+    if (next < ATTR_BASE || next > ATTR_MAX) return;
+    if (delta > 0 && pointsLeft(draft) <= 0) return;
+    draft.attrs[k] = next;
+    rerenderCreation(b);
+  }));
+}
+
+// Prekreslí formulár a vráti fokus na rovnaké tlačidlo (dôležité pre klávesnicu).
+function rerenderCreation(btn) {
+  const sel = btn.dataset.attr
+    ? `.step[data-attr="${btn.dataset.attr}"][data-delta="${btn.dataset.delta}"]`
+    : `.opt[data-field="${btn.dataset.field}"][data-val="${btn.dataset.val}"]`;
+  const hadFocus = document.activeElement === btn;
+  renderCreation();
+  if (hadFocus) {
+    const again = document.querySelector(sel);
+    if (again && !again.disabled) again.focus();
+  }
+}
+
+function finishCreation() {
+  if (pointsLeft(draft) > 0) return;
+  state = buildCharacter(draft);
+  draft = null;
+  log(`${state.name} sa vydáva na cestu – ${className(state).toLowerCase()}, ${ORIGINS[state.origin].name.toLowerCase()}.`, "good");
   show(
-    [`Vitaj, <strong>${escapeHtml(name)}</strong>. Akou cestou kráčaš?`,
-      ...Object.values(CLASSES).map((c) => `<strong>${c.name}</strong> – <span class="muted">${c.desc}</span>`)],
-    Object.entries(CLASSES).map(([key, c]) => ({
-      label: c.name,
-      action: () => {
-        state = newState(key);
-        state.name = name;
-        log(`${name} sa vydáva na cestu ako ${c.name.toLowerCase()}.`, "good");
-        go("dedina");
-      },
-    }))
+    [
+      `Tvoja cesta do Hôrky trvala tri dni. Keď konečne ${g("vyšiel", "vyšla")} z lesa, uvidel${g("", "a")} si dedinku zahalenú sivým oparom, hoci všade okolo svietilo slnko.`,
+      `Pri bráne ťa čaká starosta Ondrej. „Takže ty si ${g("ten", "tá")}, ${g("ktorý", "ktorá")} nás zachráni?“ Premeria si ťa od hlavy po päty. „Poď, ukážem ti dedinu.“`,
+    ],
+    [{ label: "Vstúpiť do Hôrky", action: () => go("dedina") }]
   );
 }
 
@@ -218,7 +406,7 @@ const SCENES = {
     const f = state.flags;
     let text;
     if (f.won) {
-      text = ["Starosta Ondrej ťa objíme. „Si hrdina Hôrky! Tvoje meno budú spievať ešte naši vnuci.“"];
+      text = [`Starosta Ondrej ťa objíme. „Si ${g("hrdina", "hrdinka")} Hôrky! Tvoje meno budú spievať ešte naši vnuci.“`];
     } else if (f.chiefDead && !f.towerKnown) {
       f.towerKnown = true;
       text = [
@@ -227,14 +415,14 @@ const SCENES = {
         "Starosta ti do dlane vloží 30 zlatých. „Na lepšiu výzbroj. Budeš ju potrebovať.“",
       ];
       state.gold += 30;
-      log("Dostal si 30 zlatých. Objavená lokalita: Zrúcaná veža.", "gold");
+      log(`${g("Dostal", "Dostala")} si 30 zlatých. Objavená lokalita: Zrúcaná veža.`, "gold");
     } else if (f.towerKnown) {
-      text = ["„Morvent čaká vo veži,“ hovorí starosta. „Choď, až budeš pripravený. A vezmi si elixíry.“"];
+      text = [`„Morvent čaká vo veži,“ hovorí starosta. „Choď, až budeš ${g("pripravený", "pripravená")}. A vezmi si elixíry.“`];
     } else if (f.caveKnown) {
       text = ["„Goblini zo Zubatej jaskyne kradnú naše ovce,“ vzdychá starosta. „Ich náčelník Gruzz má niečo spoločné s tým tieňom, som si istý.“"];
     } else {
       text = [
-        "Starosta Ondrej je starý muž s unavenými očami. „Vďaka, že si prišiel,“ povie.",
+        `Starosta Ondrej je starý muž s unavenými očami. „Vďaka, že si ${g("prišiel", "prišla")},“ povie.`,
         "„Všetko začalo, keď sa v lese objavili goblini. Drevorubači hovoria, že ich stopy vedú k nejakej jaskyni. Preskúmaj Šepkavý les a nájdi ju.“",
       ];
       f.quest = true;
@@ -279,7 +467,7 @@ const SCENES = {
         disabled: !(f.caveDepth >= 2),
         action: () => startCombat("nacelnik", () => {
           f.chiefDead = true;
-          log("Našiel si zvláštny čierny amulet. Možno o ňom niečo vie starosta.", "good");
+          log(`${g("Našiel", "Našla")} si zvláštny čierny amulet. Možno o ňom niečo vie starosta.`, "good");
           go("jaskyna");
         }),
       });
@@ -326,7 +514,7 @@ const SCENES = {
     show(
       [
         "Na vrchole veže stojí vysoká postava v plášti z tieňov. Oči jej žiaria fialovým svetlom.",
-        "„Ďalší hrdina,“ zasyčí Morvent. „Hôrka ma vyhnala. Teraz bude patriť mne – navždy.“",
+        `„${g("Ďalší hrdina", "Ďalšia hrdinka")},“ zasyčí Morvent. „Hôrka ma vyhnala. Teraz bude patriť mne – navždy.“`,
       ],
       [
         { label: "Bojovať!", action: () => startCombat("mag", victory) },
@@ -352,7 +540,7 @@ function rest() {
   state.gold -= 8;
   state.hp = state.maxHp;
   state.mp = state.maxMp;
-  log("Vyspal si sa v hostinci U Zlatého klasu. Zdravie a mana sú obnovené.", "good");
+  log(`${g("Vyspal", "Vyspala")} si sa v hostinci U Zlatého klasu. Zdravie a mana sú obnovené.`, "good");
   go("dedina");
 }
 
@@ -363,7 +551,7 @@ function buy(key) {
   if (it.slot === "weapon") state.weapon = key;
   else if (it.slot === "armor") state.armor = key;
   else state.inv[key] = (state.inv[key] || 0) + 1;
-  log(`Kúpil si: ${it.name}.`, "gold");
+  log(`${g("Kúpil", "Kúpila")} si: ${it.name}.`, "gold");
   go("obchod");
 }
 
@@ -389,15 +577,15 @@ function exploreForest() {
     const foes = state.level >= 3 ? ["vlk", "pavuk", "bandita"] : ["vlk", "pavuk"];
     startCombat(foes[rand(0, foes.length - 1)], () => go("les"));
   } else if (roll < 0.8) {
-    const g = rand(3, 10);
-    state.gold += g;
-    log(`Pod koreňom starého duba si našiel mešec s ${g} zlatými.`, "gold");
-    show(["Narazil si na opustený tábor. V popole sa niečo zaleskne – mešec so zlatom!"],
+    const found = rand(3, 10);
+    state.gold += found;
+    log(`Pod koreňom starého duba si ${g("našiel", "našla")} mešec s ${found} zlatými.`, "gold");
+    show([`${g("Narazil", "Narazila")} si na opustený tábor. V popole sa niečo zaleskne – mešec so zlatom!`],
       [{ label: "Pokračovať", action: () => go("les") }]);
   } else {
     const heal = rand(6, 12);
     state.hp = Math.min(state.maxHp, state.hp + heal);
-    log(`Natrhal si liečivé byliny a obnovil ${heal} zdravia.`, "good");
+    log(`${g("Natrhal", "Natrhala")} si liečivé byliny a ${g("obnovil", "obnovila")} ${heal} zdravia.`, "good");
     show(["Na čistinke rastú liečivé byliny. Rozžuješ pár lístkov a cítiš sa lepšie."],
       [{ label: "Pokračovať", action: () => go("les") }]);
   }
@@ -408,7 +596,7 @@ function exploreCave() {
   f.caveDepth = (f.caveDepth || 0) + 1;
   if (Math.random() < 0.15) {
     state.inv.liek = (state.inv.liek || 0) + 1;
-    log("V goblinskej skrýši si našiel Liečivý elixír.", "good");
+    log(`V goblinskej skrýši si ${g("našiel", "našla")} Liečivý elixír.`, "good");
     show(["Za balvanom nájdeš goblinskú skrýšu. Väčšinou haraburdie, ale jeden elixír je celý!"],
       [{ label: "Pokračovať", action: () => go("jaskyna") }]);
     return;
@@ -459,42 +647,43 @@ function playerTurn(action) {
   combat.defending = false;
 
   if (action === "attack") {
-    const critChance = state.cls === "zlodej" ? 0.25 : 0.1;
+    const critChance = (state.cls === "zlodej" ? 0.25 : 0.1) + (attr("obratnost") - ATTR_BASE) * 0.03;
     const crit = Math.random() < critChance;
     const d = damage(totalAtk(), e.def, crit);
     e.hp -= d;
-    lines.push(crit ? `Kritický zásah! Udelil si ${d} poškodenia.` : `Zasiahol si nepriateľa za ${d}.`);
+    lines.push(crit ? `Kritický zásah! ${g("Udelil", "Udelila")} si ${d} poškodenia.` : `${g("Zasiahol", "Zasiahla")} si nepriateľa za ${d}.`);
   } else if (action === "skill") {
     state.mp -= sk.cost;
     let d;
     if (state.cls === "bojovnik") d = damage(totalAtk(), e.def) * 2;
     else if (state.cls === "mag") d = totalAtk() + 8 + state.level * 2 + rand(0, 4);
     else d = damage(totalAtk(), e.def, true) + 2;
+    d += attr("inteligencia") - ATTR_BASE;
     e.hp -= d;
-    lines.push(`${sk.name}! Udelil si ${d} poškodenia.`);
+    lines.push(`${sk.name}! ${g("Udelil", "Udelila")} si ${d} poškodenia.`);
   } else if (action === "defend") {
     combat.defending = true;
     const r = 2 + Math.floor(state.maxMp / 10);
     state.mp = Math.min(state.maxMp, state.mp + r);
-    lines.push(`Zaujal si obranný postoj a sústredil sa (+${r} many).`);
+    lines.push(`${g("Zaujal", "Zaujala")} si obranný postoj a ${g("sústredil", "sústredila")} sa (+${r} many).`);
   } else if (action === "potion") {
     state.inv.liek--;
     const before = state.hp;
     state.hp = Math.min(state.maxHp, state.hp + 20);
-    lines.push(`Vypil si liečivý elixír (+${state.hp - before} zdravia).`);
+    lines.push(`${g("Vypil", "Vypila")} si liečivý elixír (+${state.hp - before} zdravia).`);
   } else if (action === "mana") {
     state.inv.mana--;
     const before = state.mp;
     state.mp = Math.min(state.maxMp, state.mp + 15);
-    lines.push(`Vypil si modrý elixír (+${state.mp - before} many).`);
+    lines.push(`${g("Vypil", "Vypila")} si modrý elixír (+${state.mp - before} many).`);
   } else if (action === "flee") {
-    if (Math.random() < 0.6) {
+    if (Math.random() < 0.5 + attr("obratnost") * 0.05) {
       log("Podarilo sa ti utiecť.");
       combat = null;
       SCENES[state.scene]();
       return;
     }
-    lines.push("Pokúsil si sa utiecť, ale nepriateľ ti zahradil cestu!");
+    lines.push(`${g("Pokúsil", "Pokúsila")} si sa utiecť, ale nepriateľ ti zahradil cestu!`);
   }
 
   lines.forEach((l) => log(l));
@@ -529,14 +718,14 @@ function winCombat() {
   state.xp += e.xp;
   const onWin = combat.onWin;
   combat = null;
-  log(`Porazil si: ${e.name}. +${e.xp} skúseností, +${gold} zlatých.`, "gold");
+  log(`${g("Porazil", "Porazila")} si: ${e.name}. +${e.xp} skúseností, +${gold} zlatých.`, "gold");
   if (Math.random() < 0.2 && !e.final) {
     state.inv.liek = (state.inv.liek || 0) + 1;
     log("Nepriateľ mal pri sebe Liečivý elixír!", "good");
   }
   checkLevelUp();
   if (e.final) return onWin();
-  show([`<span class="enemy">${e.name}</span> padol k zemi. Zvíťazil si!`],
+  show([`<span class="enemy">${e.name}</span> padol k zemi. ${g("Zvíťazil", "Zvíťazila")} si!`],
     [{ label: "Pokračovať", action: onWin }]);
 }
 
@@ -544,14 +733,14 @@ function checkLevelUp() {
   while (state.xp >= xpNeeded(state.level)) {
     state.xp -= xpNeeded(state.level);
     state.level++;
-    const g = { bojovnik: [8, 2, 2, 1], mag: [5, 6, 1, 1], zlodej: [6, 3, 2, 1] }[state.cls];
-    state.maxHp += g[0];
-    state.maxMp += g[1];
-    state.atk += g[2];
-    state.def += g[3];
+    const gain = { bojovnik: [8, 2, 2, 1], mag: [5, 6, 1, 1], zlodej: [6, 3, 2, 1] }[state.cls];
+    state.maxHp += gain[0];
+    state.maxMp += gain[1];
+    state.atk += gain[2];
+    state.def += gain[3];
     state.hp = state.maxHp;
     state.mp = state.maxMp;
-    log(`Postúpil si na úroveň ${state.level}! Si silnejší a plne zregenerovaný.`, "good");
+    log(`${g("Postúpil", "Postúpila")} si na úroveň ${state.level}! Si ${g("silnejší a plne zregenerovaný", "silnejšia a plne zregenerovaná")}.`, "good");
   }
 }
 
@@ -562,7 +751,7 @@ function defeat() {
   show(
     [
       "Svet sa ti zatmie pred očami. Padáš na zem a tieň sa nad tebou zatvára…",
-      "<strong>Prehral si.</strong>",
+      `<strong>${g("Prehral", "Prehrala")} si.</strong>`,
     ],
     [
       { label: "Prebudiť sa v dedine (stratíš polovicu zlata)", action: () => {
@@ -586,7 +775,7 @@ function victory() {
     [
       "Morvent vykríkne a jeho telo sa rozpadne na čierny prach. Tieň nad krajinou sa trhá ako starý závoj a dnu prenikne slnko.",
       "Keď sa vrátiš do Hôrky, celá dedina ťa víta s kvetmi a spevom. Studne sú opäť čisté a polia zelené.",
-      `<strong>Gratulujem, ${escapeHtml(state.name)}! Dohral si hru na úrovni ${state.level}.</strong>`,
+      `<strong>Gratulujem, ${escapeHtml(state.name)}! ${g("Dohral", "Dohrala")} si hru na úrovni ${state.level}.</strong>`,
     ],
     [
       { label: "Vrátiť sa do dediny", action: () => go("dedina") },
