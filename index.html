@@ -2,24 +2,27 @@
 <html lang="sk">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Tieň nad Hôrkou</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main id="app">
     <header>
-      <h1>Tieň nad Hôrkou</h1>
-      <div class="menu">
-        <button id="btn-save" type="button">Uložiť</button>
-        <button id="btn-load" type="button">Načítať</button>
-        <button id="btn-new" type="button">Nová hra</button>
+      <div class="brand">
+        <h1>Tieň nad Hôrkou</h1>
+        <div class="tagline">Textové RPG v štýle D&amp;D</div>
+      </div>
+      <div class="header-side">
+        <div class="account-line"><span id="account"></span> <span id="save-status" hidden></span></div>
+        <div class="menu" id="menu"></div>
       </div>
     </header>
     <section id="stats" aria-live="polite"></section>
     <section id="story"></section>
     <section id="choices"></section>
     <section id="log" aria-live="polite"></section>
+    <footer>Pravidlá sú zjednodušenou verziou 5. edície podľa System Reference Document 5.1 (Wizards of the Coast, licencia CC BY 4.0).</footer>
   </main>
   <script src="game.js"></script>
 </body>
