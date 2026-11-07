@@ -628,8 +628,19 @@ function loadGame() {
 
 $("btn-save").addEventListener("click", saveGame);
 $("btn-load").addEventListener("click", loadGame);
+let confirmTimer = null;
 $("btn-new").addEventListener("click", () => {
-  if (!state || confirm("Naozaj začať novú hru? Neuložený postup sa stratí.")) startScreen();
+  const btn = $("btn-new");
+  if (!state || confirmTimer) {
+    clearTimeout(confirmTimer);
+    confirmTimer = null;
+    btn.textContent = "Nová hra";
+    startScreen();
+    return;
+  }
+  btn.textContent = "Naozaj? Klikni znova";
+  log("Neuložený postup sa stratí. Pre novú hru klikni ešte raz.", "bad");
+  confirmTimer = setTimeout(() => { confirmTimer = null; btn.textContent = "Nová hra"; }, 3000);
 });
 
 startScreen();
